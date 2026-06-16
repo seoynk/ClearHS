@@ -1,0 +1,10 @@
+# 엑셀 파일 및 데이터셋 업로드 제외
+*.xlsx
+*.csv
+
+# 벡터 DB 캐시 제외 (Chroma DB가 생성하는 파일)
+chroma_db/
+
+# 파이썬 캐시 제외
+__pycache__/
+*.pyc
