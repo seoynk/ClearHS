@@ -13,6 +13,11 @@ class ExtractedFields(BaseModel):
     manufacturer: Optional[str] = Field(default=None, description="제조사")
     quantity: Optional[str] = Field(default=None, description="수량")
     weight: Optional[str] = Field(default=None, description="중량")
+    # 260624 유림 추가
+    unit_price: Optional[str] = Field(default=None, description="단가 (면세/가격검증 판단용)")
+    currency: Optional[str] = Field(default=None, description="통화 단위 (KRW, USD 등)")
+    intended_user: Optional[str] = Field(default=None, description="연구용/전시용/상업용 견본 등")
+
 
 
 class ProductInfo(ExtractedFields):
@@ -49,7 +54,23 @@ class FTAResult(BaseModel):
     notes: Optional[str] = None
 
 
+# 260624 유림 추가
+class ExemptionResult(BaseModel):
+    is_likely_exempt: bool
+    exemption_category: Optional[str] = None   # "상업용 견본품/무상 샘플" 등
+    exemption_basis: Optional[str] = None        # "관세법 제94조제3호"
+    additional_required_documents: List[str] = Field(default_factory=list)
+    reasoning: str
+    cited_chunks: List[CitedChunk] = Field(default_factory=list)
+    llm_self_eval: float = 0.0
+    notes: Optional[str] = None
+
+
 class DocumentCheckResult(BaseModel):
     required_documents: List[str]
     missing_documents: List[str]
     is_complete: bool
+    # 260624 유림 추가
+    exemption: Optional[ExemptionResult] = None
+
+
