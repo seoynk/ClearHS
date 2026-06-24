@@ -15,7 +15,7 @@ _DEFAULT_CHROMA_PATH = str(_PROJECT_ROOT / "chroma_db")
 
 CONFIG = {
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
-    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "solar-mini"),
     "CHROMA_DB_PATH": os.getenv("CHROMA_DB_PATH") or _DEFAULT_CHROMA_PATH,
     "COLLECTION_NAME": os.getenv("COLLECTION_NAME", "customs_knowledge_v3"),
     "EMBEDDING_MODEL": os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),

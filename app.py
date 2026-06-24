@@ -55,10 +55,10 @@ with st.sidebar:
     # --- 환경 설정 ---
     st.subheader("⚙️ 환경 설정")
     api_key = st.text_input(
-        "OpenAI API Key",
-        value=os.getenv("OPENAI_API_KEY", ""),
+        "Upstage API Key",
+        value=os.getenv("UPSTAGE_API_KEY", ""),
         type="password",
-        placeholder="sk-...",
+        placeholder="...",
     )
     chroma_path = st.text_input(
         "ChromaDB 경로",
@@ -70,10 +70,10 @@ with st.sidebar:
         value=os.getenv("COLLECTION_NAME", "customs_knowledge_v3"),
     )
     model_name = st.selectbox(
-        "모델",
-        ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini", "gpt-4o"],
-        index=0,
-    )
+    "모델",
+    ["solar-mini"],
+    index=0,
+)
     st.divider()
 
     # --- 파일 업로드 ---
