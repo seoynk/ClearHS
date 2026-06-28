@@ -339,8 +339,23 @@ if fta_result.eligible:
     st.success(f"FTA 적용 가능 — {', '.join(fta_result.applicable_agreements)}")
     if fta_result.required_certificate_type:
         st.markdown(f"**필요 서류:** {fta_result.required_certificate_type}")
+    # 0629 유림 추가 — PSR(원산지결정기준) 실데이터 매칭 결과 화면에 표시
+    if fta_result.origin_criterion:
+        st.markdown("**원산지결정기준 (PSR):**")
+        st.info(fta_result.origin_criterion)
+    else:
+        st.caption("ℹ️ 이 HS코드에 대한 PSR(원산지결정기준) 데이터를 찾지 못했어요 — 수동 확인이 필요해요.")
 else:
-    st.warning("해당 원산지에 적용 가능한 FTA 협정 없음 (현재 stub 기준)")
+    st.warning("해당 원산지에 적용 가능한 FTA 협정 정보가 없습니다.")
+
+# 0629 유림 추가 — 판단 근거 펼쳐보기
+if fta_result.reasoning:
+    with st.expander("🔍 FTA 판단 근거 자세히 보기"):
+        st.write(fta_result.reasoning)
+        if fta_result.cited_chunks:
+            for chunk in fta_result.cited_chunks:
+                st.caption(f"`{chunk.chunk_index}` — {chunk.snippet[:150]}")
+
 if fta_result.notes:
     st.caption(f"⚠️ {fta_result.notes}")
 

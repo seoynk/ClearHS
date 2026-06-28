@@ -52,6 +52,13 @@ class FTAResult(BaseModel):
     applicable_agreements: List[str] = Field(default_factory=list)
     required_certificate_type: Optional[str] = None
     notes: Optional[str] = None
+    # 0629 유림 추가 — PSR(품목별원산지결정기준) 실데이터 매칭 결과
+    origin_criterion: Optional[str] = Field(
+        default=None, description="분류된 HS코드에 해당하는 PSR 원산지결정기준 원문 (예: CTH, 완전생산기준 등)"
+    )
+    reasoning: Optional[str] = Field(default=None, description="판단 근거 설명")
+    cited_chunks: List[CitedChunk] = Field(default_factory=list)
+    llm_self_eval: float = Field(default=0.0, ge=0, le=1, description="매칭 확신도 (PSR 코드 정확매칭이면 높음)")
 
 
 # 260624 유림 추가
@@ -70,7 +77,6 @@ class DocumentCheckResult(BaseModel):
     required_documents: List[str]
     missing_documents: List[str]
     is_complete: bool
-    # 260624 유림 추가
+    # 260624 유림 추가 — 기본값 None 빠져있던 거 추가함 (없으면 documents.py에서
+    # exemption 안 넘기는 기존 호출들이 다 에러남)
     exemption: Optional[ExemptionResult] = None
-
-
