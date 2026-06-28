@@ -21,4 +21,6 @@ CONFIG = {
     "EMBEDDING_MODEL": os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
     "RETRIEVAL_WEIGHT": float(os.getenv("RETRIEVAL_WEIGHT", "0.4")),
     "LLM_SELF_EVAL_WEIGHT": float(os.getenv("LLM_SELF_EVAL_WEIGHT", "0.6")),
+    "PSR_US_CSV": os.getenv("PSR_US_CSV") or str(_PROJECT_ROOT / "output" / "korus_psr_chunks.csv"),
+    "PSR_CN_CSV": os.getenv("PSR_CN_CSV") or str(_PROJECT_ROOT / "output" / "korus_cn_psr_chunks.csv"),
 }
