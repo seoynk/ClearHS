@@ -6,6 +6,8 @@ from .fta import check_fta_eligibility
 from .pdf_extraction import build_combined_raw_text
 from .product_extraction import extract_product_info
 from .xai import calculate_xai_confidence
+# 0626 유림 추가
+from .documents import check_duty_exemption, verify_required_documents
 
 
 def run_pipeline(doc_paths: Dict[str, str]) -> Dict:
@@ -17,7 +19,9 @@ def run_pipeline(doc_paths: Dict[str, str]) -> Dict:
     classification.xai_confidence = calculate_xai_confidence(classification, retrieval_log)
 
     fta_result = check_fta_eligibility(product_info, classification)
-    doc_check = verify_required_documents(product_info, fta_result)
+    # 0626 유림 추가
+    exemption_result = check_duty_exemption(product_info)
+    doc_check = verify_required_documents(product_info, fta_result, exemption_result)
 
     return {
         "product_info": product_info.model_dump(),
