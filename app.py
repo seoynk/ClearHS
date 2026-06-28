@@ -54,26 +54,43 @@ with st.sidebar:
 
     # --- 환경 설정 ---
     st.subheader("⚙️ 환경 설정")
+
+    # 0628 유림 추가 — API 키/ChromaDB 없이 화면·연결만 먼저 확인하는 모드
+    test_mode = st.checkbox(
+        "🧪 테스트 모드 (API 키 / ChromaDB 없이 더미 데이터로 확인)",
+        value=False,
+        help="API 키를 아직 못 받았거나 ChromaDB가 준비 안 됐을 때, UI와 파이프라인 연결이 "
+             "제대로 되는지 더미 데이터로 먼저 확인할 수 있어요. PDF 추출(1단계)·FTA(4단계)·"
+             "서류검증(5단계 로직)은 그대로 실제 코드로 돌아가고, LLM이 필요한 "
+             "상품정보추출(2단계)·HS분류(3단계)·면세판단(5단계)만 더미값으로 대체돼요.",
+    )
+
     api_key = st.text_input(
         "Upstage API Key",
         value=os.getenv("UPSTAGE_API_KEY", ""),
         type="password",
         placeholder="...",
+        disabled=test_mode,
     )
     chroma_path = st.text_input(
         "ChromaDB 경로",
         value=os.getenv("CHROMA_DB_PATH", str(Path(__file__).parent / "chroma_db")),
         placeholder="./chroma_db",
+        disabled=test_mode,
     )
     collection_name = st.text_input(
         "컬렉션 이름",
         value=os.getenv("COLLECTION_NAME", "customs_knowledge_v3"),
+        disabled=test_mode,
     )
     model_name = st.selectbox(
-    "모델",
-    ["solar-mini"],
-    index=0,
-)
+        "모델",
+        ["solar-pro2", "solar-mini"],
+        index=0,
+        help="구조화된 출력(response_format)은 solar-pro2에서만 지원돼요. "
+             "solar-mini는 분류/추출/면세판단 단계에서 에러가 날 수 있어요.",
+        disabled=test_mode,
+    )
     st.divider()
 
     # --- 파일 업로드 ---
@@ -109,28 +126,77 @@ if not run_btn:
     st.stop()
 
 
-# ── 실행: 설정을 환경변수로 주입 후 파이프라인 호출 ──────────────────────────
-os.environ["OPENAI_API_KEY"]  = api_key
-os.environ["CHROMA_DB_PATH"]  = chroma_path
-os.environ["COLLECTION_NAME"] = collection_name
-os.environ["OPENAI_MODEL"]    = model_name
-
-# clearhs를 import하기 전에 환경변수를 세팅해야 하므로 run 시점에 import
+# ── 실행: clearhs import 후 CONFIG를 직접 덮어써서 설정 주입 ─────────────────
+# 0626 유림 수정
+# clearhs.config.CONFIG는 모듈이 "처음 import될 때" 한 번만 만들어지는 딕셔너리라서,
+# os.environ만 바꾸는 방식은 Streamlit 두 번째 실행부터는 반영이 안 될 수 있다.
+# (clearhs.config는 서버 프로세스 안에서 한 번만 import되고, 그 다음부터는 재실행돼도
+#  import 자체가 다시 일어나지 않기 때문 — get_client.cache_clear()는 클라이언트
+#  객체만 새로 만들 뿐, CONFIG 안의 값 자체는 안 바꿔준다.)
+# 그래서 다른 모듈들이 들고 있는 "같은 CONFIG 딕셔너리 객체"를 직접 덮어쓴다.
 try:
     from clearhs.pdf_extraction    import build_combined_raw_text
     from clearhs.product_extraction import extract_product_info
     from clearhs.classification    import classify_hs_code
     from clearhs.xai               import calculate_xai_confidence
     from clearhs.fta               import check_fta_eligibility
-    from clearhs.documents         import verify_required_documents
-    # lru_cache 된 클라이언트/컬렉션을 환경변수 변경 후 재생성하기 위해 캐시 초기화
+    from clearhs.documents         import check_duty_exemption, verify_required_documents  # 0626 유림 추가
     from clearhs.clients import get_client
     from clearhs.rag     import _get_collection
-    get_client.cache_clear()
-    _get_collection.cache_clear()
+    from clearhs.models  import ProductInfo, ClassificationResult, FTAResult, ExemptionResult, CitedChunk  # 0628 유림 추가
+    import clearhs.config as _cfg
 except ImportError as e:
     st.error(f"clearhs 패키지를 찾을 수 없어요. `app.py`가 프로젝트 루트에 있는지 확인해주세요.\n\n`{e}`")
     st.stop()
+
+# 0628 유림 추가 — 테스트 모드용 더미 함수들 (실제 API/ChromaDB 호출 없음, models.py 그대로 사용)
+def _mock_extract_product_info(raw_text: str, source_documents: list) -> ProductInfo:
+    return ProductInfo(
+        product_name="(테스트 모드) 블루투스 이어폰",
+        materials=["plastic", "lithium battery"],
+        usage="개인용 음향기기",
+        origin_country="China",
+        manufacturer="Dummy Co., Ltd.",
+        quantity="100 EA",
+        weight="2.5 kg",
+        unit_price="15.00",
+        currency="USD",
+        intended_user="일반 소비자용",
+        raw_text=raw_text,
+        source_documents=source_documents,
+    )
+
+def _mock_classify_hs_code(product_info: ProductInfo):
+    classification = ClassificationResult(
+        hs_code="8518.30",
+        hs_code_description="헤드폰·이어폰 및 이와 결합된 마이크로폰",
+        reasoning="(테스트 모드 더미) 음향 변환기기로 분류되어 HS 8518.30에 해당함",
+        cited_chunks=[CitedChunk(chunk_index="law_001", similarity=0.82, snippet="(더미 인용 텍스트)")],
+        llm_self_eval=0.78,
+    )
+    retrieval_log = [
+        {"chunk_index": "law_001", "text": "(더미 검색 결과 텍스트)", "metadata": {}, "similarity": 0.82},
+    ]
+    return classification, retrieval_log
+
+def _mock_check_duty_exemption(product_info: ProductInfo) -> ExemptionResult:
+    return ExemptionResult(
+        is_likely_exempt=False,
+        reasoning="(테스트 모드 더미) 실제 면세 판단이 아닙니다.",
+        notes="API 키 연결 전 UI 확인용 더미 데이터입니다.",
+    )
+
+# 0626 유림 수정 — os.environ 대신 CONFIG를 직접 덮어씀 + OPENAI_BASE_URL 추가
+if not test_mode:
+    _cfg.CONFIG["OPENAI_API_KEY"]  = api_key
+    _cfg.CONFIG["OPENAI_BASE_URL"] = "https://api.upstage.ai/v1"  # Upstage Solar 엔드포인트
+    _cfg.CONFIG["OPENAI_MODEL"]    = model_name
+    _cfg.CONFIG["CHROMA_DB_PATH"]  = chroma_path
+    _cfg.CONFIG["COLLECTION_NAME"] = collection_name
+
+    # lru_cache 된 클라이언트/컬렉션을 새 설정으로 재생성하기 위해 캐시 초기화
+    get_client.cache_clear()
+    _get_collection.cache_clear()
 
 # 업로드 파일을 임시 파일로 저장
 tmp_dir = tempfile.mkdtemp()
@@ -149,6 +215,10 @@ if spec_file:    doc_paths["specification"] = save_tmp(spec_file)
 
 # ── 단계별 실행 + 결과 렌더링 ────────────────────────────────────────────────
 st.markdown("## 📊 분류 결과")
+
+if test_mode:
+    st.warning("🧪 테스트 모드입니다 — 2·3·5단계(상품정보추출·HS분류·면세판단)는 전부 더미 데이터예요. "
+               "실제 분류/판단 결과가 아니라 화면과 데이터 연결만 확인하는 용도예요.")
 
 result = {}
 
@@ -170,7 +240,11 @@ with st.expander("추출된 원문 보기"):
 # ─ 2단계: 상품정보 구조화 추출 ────────────────────────────────────────────────
 with st.status("🔍 2단계: 상품 정보 구조화 중 (LLM)...", expanded=False) as s2:
     try:
-        product_info = extract_product_info(combined_raw_text, source_documents=list(doc_paths.keys()))
+        # 0628 유림 수정 — 테스트 모드 분기
+        if test_mode:
+            product_info = _mock_extract_product_info(combined_raw_text, list(doc_paths.keys()))
+        else:
+            product_info = extract_product_info(combined_raw_text, source_documents=list(doc_paths.keys()))
         s2.update(label=f"✅ 2단계 완료 — {product_info.product_name}", state="complete")
     except Exception as e:
         s2.update(label="❌ 2단계 실패", state="error", expanded=True)
@@ -198,7 +272,11 @@ if product_info.materials:
 # ─ 3단계: HS 코드 분류 (RAG Tool Calling) ─────────────────────────────────────
 with st.status("🤖 3단계: HS 코드 분류 중 (RAG + Tool Calling)...", expanded=False) as s3:
     try:
-        classification, retrieval_log = classify_hs_code(product_info)
+        # 0628 유림 수정 — 테스트 모드 분기
+        if test_mode:
+            classification, retrieval_log = _mock_classify_hs_code(product_info)
+        else:
+            classification, retrieval_log = classify_hs_code(product_info)
         classification.xai_confidence = calculate_xai_confidence(classification, retrieval_log)
         s3.update(label=f"✅ 3단계 완료 — HS {classification.hs_code}", state="complete")
     except Exception as e:
@@ -267,16 +345,37 @@ if fta_result.notes:
     st.caption(f"⚠️ {fta_result.notes}")
 
 
-# ─ 5단계: 서류 검증 ───────────────────────────────────────────────────────────
-with st.status("📋 5단계: 필요 서류 검증 중...", expanded=False) as s5:
+# ─ 5단계: 면세 판단 + 서류 검증 ─────────────────────────────────────────────────
+# 0626 유림 수정 (check_duty_exemption 호출 추가, verify_required_documents에 결과 전달)
+with st.status("📋 5단계: 면세 대상 여부 판단 + 필요 서류 검증 중...", expanded=False) as s5:
     try:
-        doc_check = verify_required_documents(product_info, fta_result)
+        # 0628 유림 수정 — 테스트 모드 분기
+        if test_mode:
+            exemption_result = _mock_check_duty_exemption(product_info)
+        else:
+            exemption_result = check_duty_exemption(product_info)
+        doc_check = verify_required_documents(product_info, fta_result, exemption_result)
         label = "✅ 서류 완비" if doc_check.is_complete else f"⚠️ 누락 서류 {len(doc_check.missing_documents)}건"
         s5.update(label=f"5단계 완료 — {label}", state="complete")
     except Exception as e:
         s5.update(label="❌ 5단계 실패", state="error", expanded=True)
         st.error(str(e))
         st.stop()
+
+# 0626 유림 추가 — 면세 가능성 UI
+st.markdown("### 💰 면세/감면 대상 여부")
+if exemption_result.is_likely_exempt:
+    st.success(
+        f"면세 대상일 가능성 있음 — {exemption_result.exemption_category or ''} "
+        f"({exemption_result.exemption_basis or '근거 조항 미확정'})"
+    )
+    st.markdown(f"**판단 근거:** {exemption_result.reasoning}")
+    if exemption_result.additional_required_documents:
+        st.markdown(f"**추가로 필요한 서류:** {', '.join(exemption_result.additional_required_documents)}")
+else:
+    st.info("면세/감면 대상에 해당하지 않는 것으로 판단됨")
+if exemption_result.notes:
+    st.caption(f"⚠️ {exemption_result.notes}")
 
 st.markdown("### 📋 필요 서류 검증")
 doc_cols = st.columns(len(doc_check.required_documents))
