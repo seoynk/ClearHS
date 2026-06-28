@@ -132,3 +132,13 @@ chroma_sync.py로 기기간 동기화 아직 못함 (3번 그거 짱오래걸리
    → 임베딩 재계산 없이 로컬 인덱스만 새로 만듦 (윈도우/맥 호환 문제 + 느린 문제 둘 다 해결)
 
 * chroma_sync.py는 app.py랑 같은 위치(프로젝트 루트)에 있어야 동작함 (clearhs/ 폴더 안 아님)
+
+---
+0629 엶
+1. fta.py stub 없애고 PSR 데이터(korus_psr_chunks.csv 한미,
+   korus_cn_psr_chunks.csv 한중) 연결함. RAG/LLM 안 쓰고 HS코드 패턴매칭으로 직접
+   조회하는 방식으로 함 (코드↔기준이 1:1 매핑되는 표 데이터라서 이게 더 정확하고 빠르대요, API 호출도 안 듦이!)
+2. models.py의 FTAResult에 origin_criterion(매칭된 PSR 원문)/reasoning/cited_chunks 추가
+3. config.py에 PSR_US_CSV/PSR_CN_CSV 경로 추가 (output/ 폴더 기준)
+4. app.py 4단계 화면에 PSR 원산지결정기준 텍스트 + 판단근거 보이게 추가
+5. 테스트모드로 확인 — 더미상품(중국산 이어폰 HS8518.30) PSR 데이터랑 매칭돼서 "6단위 세번변경기준 또는 부가가치 40%" 기준으로 잘 떠요! 신난다
