@@ -116,3 +116,21 @@
 
 다음 할일: FTA stub(fta.py) 실데이터(PSR) 연결,
 chroma_sync.py로 기기간 동기화 아직 못함 (3번 그거 짱오래걸리던거) -> 이거 다시 말할개요!! 슝이한테 부탁할게있은.
+
+
+
++) chroma_sync.py 추가 — chroma_db 기기 간 동기화 스크립트
+
+[사용법]
+1. 숭이 컴(임베딩 다 돼있는 쪽)에서, 프로젝트 루트에서:
+   python chroma_sync.py export --out customs_knowledge_v3.jsonl
+   → 몇 분 안에 끝남 (이미 계산된 벡터 그대로 꺼내는 거라 빠름)
+
+2. 생성된 customs_knowledge_v3.jsonl 파일을 나(엶)한테 전달
+   (드라이브/카톡 등으로, git에는 올리지 말기 — 파일 큼)
+
+3. 내 컴에서:
+   python chroma_sync.py rebuild --in customs_knowledge_v3.jsonl
+   → 임베딩 재계산 없이 로컬 인덱스만 새로 만듦 (윈도우/맥 호환 문제 + 느린 문제 둘 다 해결)
+
+* chroma_sync.py는 app.py랑 같은 위치(프로젝트 루트)에 있어야 동작함 (clearhs/ 폴더 안 아님)
