@@ -1,6 +1,6 @@
 from typing import List
 
-from .clients import get_client
+from .clients import get_upstage_client
 from .config import CONFIG
 from .models import ExtractedFields, ProductInfo
 
@@ -10,18 +10,22 @@ EXTRACTION_SYSTEM_PROMPT = """당신은 무역 서류(인보이스, 패킹리스
 문서(거래명세서 > 인보이스 > 패킹리스트 순)를 우선하세요. 문서에 없는 정보는 \
 null 또는 빈 값으로 두고 추측해서 채우지 마세요."""
 
-
 def extract_product_info(combined_raw_text: str, source_documents: List[str]) -> ProductInfo:
     """raw_text에서 구조화된 필드를 뽑아내고, raw_text/source_documents를 붙여 ProductInfo로 반환."""
-    response = get_client().chat.completions.parse(
-        model=CONFIG["OPENAI_MODEL"],
+
+    client = get_upstage_client()
+
+    response = client.chat.completions.parse(
+        model=CONFIG["UPSTAGE_MODEL"],
         messages=[
             {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
             {"role": "user", "content": combined_raw_text},
         ],
         response_format=ExtractedFields,
     )
+
     fields = response.choices[0].message.parsed
+
     return ProductInfo(
         **fields.model_dump(),
         raw_text=combined_raw_text,

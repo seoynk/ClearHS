@@ -2,7 +2,7 @@
 import json
 from typing import Optional
 
-from .clients import get_client
+from .clients import get_openai_client
 from .config import CONFIG
 from .models import DocumentCheckResult, ExemptionResult, FTAResult, ProductInfo
 from .rag import search_hs_knowledge
@@ -59,7 +59,7 @@ def check_duty_exemption(product_info: ProductInfo, n_results: int = 6) -> Exemp
     query = _build_exemption_query(product_info)
     hits = search_hs_knowledge(query, n_results=n_results)
 
-    client = get_client()
+    client = get_openai_client()
     messages = [
         {"role": "system", "content": EXEMPTION_SYSTEM_PROMPT},
         {

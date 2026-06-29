@@ -14,8 +14,14 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_CHROMA_PATH = str(_PROJECT_ROOT / "chroma_db")
 
 CONFIG = {
+    # OpenAI
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
-    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "solar-mini"),
+    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-5.5"),
+
+    # Upstage
+    "UPSTAGE_API_KEY": os.getenv("UPSTAGE_API_KEY", ""),
+    "UPSTAGE_MODEL": os.getenv("UPSTAGE_MODEL", "solar-pro2"),
+
     "CHROMA_DB_PATH": os.getenv("CHROMA_DB_PATH") or _DEFAULT_CHROMA_PATH,
     "COLLECTION_NAME": os.getenv("COLLECTION_NAME", "customs_knowledge_v3"),
     "EMBEDDING_MODEL": os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
