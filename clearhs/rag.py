@@ -27,9 +27,19 @@ SEARCH_TOOL_SPEC = {
 def _get_collection():
     """ChromaDB 컬렉션을 첫 호출 시점에만 연결한다.
     (모듈을 import만 해도 바로 DB에 연결되면, 키/경로가 아직 안 갖춰진 환경에서 import 자체가
-    실패할 수 있어서 — 실제로 검색을 호출하는 시점까지 연결을 미뤄둔다.)"""
-    chroma_client = chromadb.PersistentClient(path=CONFIG["CHROMA_DB_PATH"])
+    실패할 수 있어서 — 실제로 검색을 호출하는 시점까지 연결을 미뤄둔다.)
+
+    0629 유림 추가 — CONFIG['CHROMA_HTTP_HOST']가 설정되어 있으면 PersistentClient(로컬
+    파일 직접 열기) 대신 'chroma run --path ...'로 띄운 서버에 HttpClient로 접속한다.
+    (윈도우에서 PersistentClient로 다른 프로세스가 쓴 인덱스를 못 읽는 문제 회피용)"""
     embedding_fn = SentenceTransformerEmbeddingFunction(model_name=CONFIG["EMBEDDING_MODEL"])
+    if CONFIG.get("CHROMA_HTTP_HOST"):
+        chroma_client = chromadb.HttpClient(
+            host=CONFIG["CHROMA_HTTP_HOST"],
+            port=CONFIG["CHROMA_HTTP_PORT"],
+        )
+    else:
+        chroma_client = chromadb.PersistentClient(path=CONFIG["CHROMA_DB_PATH"])
     return chroma_client.get_collection(
         name=CONFIG["COLLECTION_NAME"],
         embedding_function=embedding_fn,

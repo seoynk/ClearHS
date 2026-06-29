@@ -37,6 +37,10 @@ from clearhs.config import CONFIG
 
 
 def _get_client():
+    # 0629 유림 추가 — CHROMA_HTTP_HOST 설정 시 서버모드(HttpClient)로 접속.
+    # rag.py의 _get_collection()과 동일한 분기 로직.
+    if CONFIG.get("CHROMA_HTTP_HOST"):
+        return chromadb.HttpClient(host=CONFIG["CHROMA_HTTP_HOST"], port=CONFIG["CHROMA_HTTP_PORT"])
     return chromadb.PersistentClient(path=CONFIG["CHROMA_DB_PATH"])
 
 
@@ -104,6 +108,8 @@ def rebuild_collection(in_path: str, batch_size: int = 500) -> None:
         )
         print(f"  {min(i + batch_size, len(ids))}/{len(ids)}")
     print("완료! 임베딩 재계산 없이 이 기기에 로컬 인덱스를 새로 만들었습니다.")
+    if CONFIG.get("CHROMA_HTTP_HOST"):
+        print(f"(서버모드로 연결됨: {CONFIG['CHROMA_HTTP_HOST']}:{CONFIG['CHROMA_HTTP_PORT']})")
 
 
 if __name__ == "__main__":
