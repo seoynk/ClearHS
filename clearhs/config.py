@@ -23,4 +23,6 @@ CONFIG = {
     "LLM_SELF_EVAL_WEIGHT": float(os.getenv("LLM_SELF_EVAL_WEIGHT", "0.6")),
     "PSR_US_CSV": os.getenv("PSR_US_CSV") or str(_PROJECT_ROOT / "output" / "korus_psr_chunks.csv"),
     "PSR_CN_CSV": os.getenv("PSR_CN_CSV") or str(_PROJECT_ROOT / "output" / "korus_cn_psr_chunks.csv"),
+    "CHROMA_HTTP_HOST": os.getenv("CHROMA_HTTP_HOST") or None,
+    "CHROMA_HTTP_PORT": int(os.getenv("CHROMA_HTTP_PORT", "8000")),
 }
