@@ -16,7 +16,7 @@ _DEFAULT_CHROMA_PATH = str(_PROJECT_ROOT / "chroma_db")
 CONFIG = {
     # OpenAI
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
-    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-5.5"),
+    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-4.1"),
 
     # Upstage
     "UPSTAGE_API_KEY": os.getenv("UPSTAGE_API_KEY", ""),

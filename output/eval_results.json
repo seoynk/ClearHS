@@ -1,0 +1,60 @@
+{
+  "summary": {
+    "total": 5,
+    "acc_4digit": 0.6,
+    "acc_6digit": 0.4,
+    "error_count": 0
+  },
+  "results": [
+    {
+      "reference_no": "품목분류4과-1654",
+      "product_name": "SEAL; 1046799;",
+      "true_hs": "8487.90",
+      "pred_hs": "4016.93",
+      "match_4": false,
+      "match_6": false,
+      "confidence": 0.74,
+      "error": null
+    },
+    {
+      "reference_no": "품목분류4과-1671",
+      "product_name": "Girl's blouses of cotton, knitted; T-SHIRTS OF COTTON; SH06TS400FY",
+      "true_hs": "6106.10",
+      "pred_hs": "6106.20",
+      "match_4": true,
+      "match_6": false,
+      "confidence": 0.74,
+      "error": null
+    },
+    {
+      "reference_no": "품목분류1과-1124",
+      "product_name": "플린 - 3방향 연결 브라켓 SET ; B3-SFD0000P-BBW",
+      "true_hs": "3926.30",
+      "pred_hs": "8302.50",
+      "match_4": false,
+      "match_6": false,
+      "confidence": 0.67,
+      "error": null
+    },
+    {
+      "reference_no": "품목분류4과-1644",
+      "product_name": "Other bag with outer surface of textile materials; ECO BAG; BOOKS ECO BAG(RED)",
+      "true_hs": "4202.92",
+      "pred_hs": "4202.92",
+      "match_4": true,
+      "match_6": true,
+      "confidence": 0.82,
+      "error": null
+    },
+    {
+      "reference_no": "품목분류3과-2679",
+      "product_name": "Plastic Parts for Display Statue; Comics Arts Statue 002 (Main Body);",
+      "true_hs": "3926.40",
+      "pred_hs": "3926.40",
+      "match_4": true,
+      "match_6": true,
+      "confidence": 0.76,
+      "error": null
+    }
+  ]
+}
