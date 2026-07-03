@@ -113,7 +113,6 @@ def classify_hs_code(
 
     response = get_openai_client().chat.completions.parse(
         model=CONFIG["OPENAI_MODEL"],
-        temperature=0,
         messages=[
             {"role": "system", "content": CLASSIFICATION_SYSTEM_PROMPT},
             {"role": "user",   "content": user_content},

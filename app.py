@@ -11,6 +11,9 @@ from typing import Dict, List, Set
 from clearhs.xai import normalize_similarity
 
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── 페이지 설정 ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -27,7 +30,7 @@ html, body, [class*="css"] {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
                  "Helvetica Neue", Arial, sans-serif;
 }
-.stApp { background: #f5f5f7; }
+.stApp { background: #ffffff; }
 
 /* 카드 */
 .ac {
@@ -149,11 +152,11 @@ def render_confidence_card(conf: float, retrieval_score: float, llm_self_eval: f
 </div>"""
 
     if conf >= 0.75:
-        alert_bg, alert_tc, alert_msg = "#e8f8ee", "#1a7f3c", "✅ 높은 신뢰도로 분류되었습니다."
+        alert_bg, alert_tc, alert_msg = "#e8f8ee", "#1a7f3c", "높은 신뢰도로 분류되었습니다."
     elif conf >= 0.5:
-        alert_bg, alert_tc, alert_msg = "#fff8ed", "#a85900", "ℹ️ 추가 검토를 권장합니다."
+        alert_bg, alert_tc, alert_msg = "#fff8ed", "#a85900", "추가 검토를 권장합니다."
     else:
-        alert_bg, alert_tc, alert_msg = "#fff1f0", "#c0392b", "⚠️ 신뢰도가 낮습니다. 직접 검토해주세요."
+        alert_bg, alert_tc, alert_msg = "#fff1f0", "#c0392b", "신뢰도가 낮습니다. 직접 검토해주세요."
 
     return f"""
 <div class="ac" style="margin-bottom:0">
@@ -186,7 +189,7 @@ def render_confidence_card(conf: float, retrieval_score: float, llm_self_eval: f
 
 
 def render_candidate_codes(retrieval_log: List[Dict], final_hs: str) -> str:
-    """RAG 검색 결과를 HS 코드 후보 카드로 표시 — '그래서 뭐?' 문제 해결."""
+    """후보 코드 카드"""
     code_map: Dict[str, Dict] = {}
     for h in retrieval_log:
         code = h["metadata"].get("code", "")
@@ -303,64 +306,56 @@ def render_chunk_cards(retrieval_log: List[Dict], cited_idx: Set[str]) -> str:
 
     return "\n".join(cards) or '<p style="color:#aeaeb2;font-size:13px">검색 결과 없음</p>'
 
-
+test_mode = False
 # ═══════════════════════════════════════════════════════════════════════════════
 # 사이드바
 # ═══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("""
 <div style="padding:6px 0 14px">
-  <div style="font-size:22px;font-weight:700;color:#1d1d1f;letter-spacing:-0.5px">🛃 ClearHS</div>
+  <div style="font-size:22px;font-weight:700;color:#1d1d1f;letter-spacing:-0.5px">ClearHS</div>
   <div style="font-size:12px;color:#6e6e73;margin-top:2px">HS 코드 자동 분류 시스템</div>
 </div>""", unsafe_allow_html=True)
 
     # 0628 유림 추가 — API 키/ChromaDB 없이 화면·연결만 먼저 확인하는 모드
-    test_mode = st.checkbox(
-        "🧪 테스트 모드",
-        value=False,
-        help="API 키를 아직 못 받았거나 ChromaDB가 준비 안 됐을 때, UI와 파이프라인 연결이 "
-             "제대로 되는지 더미 데이터로 먼저 확인할 수 있어요. PDF 추출(1단계)·FTA(4단계)·"
-             "서류검증(5단계 로직)은 그대로 실제 코드로 돌아가고, LLM이 필요한 "
-             "상품정보추출(2단계)·HS분류(3단계)·면세판단(5단계)만 더미값으로 대체돼요.",
+    #test_mode = st.checkbox(
+    #    "🧪 테스트 모드",
+    #    value=False,
+    #    help="API 키를 아직 못 받았거나 ChromaDB가 준비 안 됐을 때, UI와 파이프라인 연결이 "
+    #         "제대로 되는지 더미 데이터로 먼저 확인할 수 있어요. PDF 추출(1단계)·FTA(4단계)·"
+    #         "서류검증(5단계 로직)은 그대로 실제 코드로 돌아가고, LLM이 필요한 "
+    #         "상품정보추출(2단계)·HS분류(3단계)·면세판단(5단계)만 더미값으로 대체돼요.",
+    #)
+
+    
+    # 서버 환경변수에서만 읽기
+    upstage_api_key = os.getenv("UPSTAGE_API_KEY")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+
+    # 사용할 모델 고정
+    upstage_model = "solar-pro2"
+    openai_model = "gpt-5.5"
+
+    # ChromaDB 설정
+    chroma_path = os.getenv(
+        "CHROMA_DB_PATH",
+        str(Path(__file__).parent / "chroma_db")
     )
 
-    with st.expander("⚙️ API / DB 설정", expanded=not test_mode):
-        st.markdown('<div style="font-size:12px;font-weight:600;color:#1d1d1f;margin-bottom:6px">문서 추출 (Upstage)</div>', unsafe_allow_html=True)
-        upstage_api_key = st.text_input(
-            "Upstage API Key", value=os.getenv("UPSTAGE_API_KEY",""),
-            type="password", placeholder="up-...", disabled=test_mode, label_visibility="collapsed")
-        upstage_model = st.selectbox(
-            "Upstage 모델", ["solar-pro2","solar-mini"],
-            index=0, disabled=test_mode)
-
-        # 0628 서연 추가 - 모델 두 개 사용하기 위해 분리
-        st.markdown('<div style="font-size:12px;font-weight:600;color:#1d1d1f;margin:10px 0 6px">HS 분류 (OpenAI)</div>', unsafe_allow_html=True)
-        openai_api_key = st.text_input(
-            "OpenAI API Key", value=os.getenv("OPENAI_API_KEY",""),
-            type="password", placeholder="sk-...", disabled=test_mode, label_visibility="collapsed")
-        openai_model = st.selectbox(
-            "OpenAI 모델", ["gpt-5.4", "gpt-4.1", "gpt-5.4-mini"],
-            index=0, disabled=test_mode)
-
-        st.divider()
-        chroma_path = st.text_input(
-            "ChromaDB 경로",
-            value=os.getenv("CHROMA_DB_PATH", str(Path(__file__).parent / "chroma_db")),
-            disabled=test_mode)
-        collection_name = st.text_input(
-            "컬렉션",
-            value=os.getenv("COLLECTION_NAME","customs_knowledge_v3"),
-            disabled=test_mode)
+    collection_name = os.getenv(
+        "COLLECTION_NAME",
+        "customs_knowledge_v3"
+    )
 
     st.markdown("---")
-    st.markdown('<div style="font-size:13px;font-weight:600;color:#1d1d1f;margin-bottom:8px">📄 문서 업로드</div>', unsafe_allow_html=True)
-    st.caption("인보이스는 필수. 나머지는 선택.")
+    st.markdown('<div style="font-size:13px;font-weight:600;color:#1d1d1f;margin-bottom:8px"> 문서 업로드</div>', unsafe_allow_html=True)
+    st.caption("인보이스(Invoice)는 필수항목 입니다.")
     invoice_file = st.file_uploader("인보이스 (Invoice) *", type=["pdf"], key="invoice")
     packing_file = st.file_uploader("패킹리스트 (Packing List)",  type=["pdf"], key="packing")
     spec_file    = st.file_uploader("명세서 (Specification)",      type=["pdf"], key="spec")
 
     st.markdown("---")
-    run_btn = st.button("🚀 분류 실행",
+    run_btn = st.button("분류 실행",
                         use_container_width=True, type="primary",
                         disabled=invoice_file is None)
     if not invoice_file:
@@ -371,18 +366,41 @@ with st.sidebar:
 # 초기 화면
 # ═══════════════════════════════════════════════════════════════════════════════
 if not run_btn:
-    st.markdown("""
-<div style="max-width:620px;margin:80px auto;text-align:center">
-  <div style="font-size:52px;margin-bottom:14px">🛃</div>
-  <div style="font-size:28px;font-weight:700;color:#1d1d1f;letter-spacing:-0.5px;line-height:1.3">
-    무역 서류를 업로드하면<br>HS 코드를 자동으로 분류합니다
-  </div>
-  <div style="font-size:15px;color:#6e6e73;margin-top:14px;line-height:1.8">
-    인보이스 · 패킹리스트 · 명세서<br>
-    → 상품 정보 추출 → RAG 기반 HS 코드 분류<br>
-    → XAI 신뢰도 + FTA 적용 + 면세 판단 + 서류 체크
-  </div>
-</div>""", unsafe_allow_html=True)
+
+    left, center, right = st.columns([1, 3, 1])
+
+    with center:
+        st.image("data/main2.png", use_container_width=True)
+
+    st.title("ClearHS")
+
+    st.subheader("AI 기반 HS 코드 자동 분류 시스템")
+
+    st.markdown(
+        """
+인보이스, 패킹리스트, 명세서 등 무역 서류를 업로드하면, 
+
+AI가 상품 정보를 분석하고 RAG 기반 검색을 통해 가장 적합한 HS Code를 추천합니다.
+
+분류 근거(XAI), 신뢰도, FTA 적용 가능성,
+면세 여부와 필요 서류까지 함께 제공합니다.
+"""
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.info("\n\n상품 정보 추출")
+
+    with col2:
+        st.info("\n\nRAG 기반 HS 분류")
+
+    with col3:
+        st.info("\n\nXAI 신뢰도")
+
+    with col4:
+        st.info("\n\nFTA · 면세 판단")
+
     st.stop()
 
 
@@ -477,9 +495,9 @@ if spec_file:    doc_paths["specification"] = _save(spec_file)
 # ═══════════════════════════════════════════════════════════════════════════════
 # 파이프라인 실행 + 결과 렌더링
 # ═══════════════════════════════════════════════════════════════════════════════
-st.markdown("## 📊 분류 결과")
+st.markdown("## 분류 결과")
 if test_mode:
-    st.warning("🧪 테스트 모드입니다 — 2·3·5단계(상품정보추출·HS분류·면세판단)는 전부 더미 데이터예요. "
+    st.warning("테스트 모드입니다 — 2·3·5단계(상품정보추출·HS분류·면세판단)는 전부 더미 데이터예요. "
                "실제 분류/판단 결과가 아니라 화면과 데이터 연결만 확인하는 용도예요.")
 
 
@@ -487,9 +505,9 @@ if test_mode:
 with st.status("📄 1단계: PDF 텍스트 추출 중...", expanded=False) as s1:
     try:
         raw = build_combined_raw_text(doc_paths)
-        s1.update(label=f"✅ 1단계 완료 — {len(raw):,}자 추출", state="complete")
+        s1.update(label=f"1단계 완료 — {len(raw):,}자 추출", state="complete")
     except Exception as e:
-        s1.update(label="❌ 1단계 실패", state="error", expanded=True)
+        s1.update(label="1단계 실패", state="error", expanded=True)
         st.error(str(e)); st.stop()
 
 with st.expander("추출된 원문 보기"):
@@ -497,14 +515,14 @@ with st.expander("추출된 원문 보기"):
 
 
 # ─ 2단계: 상품정보 구조화 ────────────────────────────────────────────────────
-with st.status("🔍 2단계: 상품 정보 구조화 중 (LLM)...", expanded=False) as s2:
+with st.status("2단계: 상품 정보 구조화 중 (LLM)...", expanded=False) as s2:
     try:
         # 0628 유림 수정 — 테스트 모드 분기
         pi = _mock_extract(raw, list(doc_paths.keys())) if test_mode \
              else extract_product_info(raw, source_documents=list(doc_paths.keys()))
-        s2.update(label=f"✅ 2단계 완료 — {pi.product_name}", state="complete")
+        s2.update(label=f"2단계 완료 — {pi.product_name}", state="complete")
     except Exception as e:
-        s2.update(label="❌ 2단계 실패", state="error", expanded=True)
+        s2.update(label="2단계 실패", state="error", expanded=True)
         st.error(str(e)); st.stop()
 
 # 상품정보 카드
@@ -526,7 +544,7 @@ st.markdown(f"""
 
 
 # ─ 3단계: HS 코드 분류 (RAG Tool Calling) ─────────────────────────────────────
-with st.status("🤖 3단계: HS 코드 분류 중 (RAG + Tool Calling)...", expanded=False) as s3:
+with st.status("3단계: HS 코드 분류 중", expanded=False) as s3:
     try:
         # 0628 유림 수정 — 테스트 모드 분기
         if test_mode:
@@ -534,9 +552,9 @@ with st.status("🤖 3단계: HS 코드 분류 중 (RAG + Tool Calling)...", exp
         else:
             cls, retrieval_log = classify_hs_code(pi)
         cls.xai_confidence = calculate_xai_confidence(cls, retrieval_log)
-        s3.update(label=f"✅ 3단계 완료 — HS {cls.hs_code}", state="complete")
+        s3.update(label=f"3단계 완료 — HS {cls.hs_code}", state="complete")
     except Exception as e:
-        s3.update(label="❌ 3단계 실패", state="error", expanded=True)
+        s3.update(label="3단계 실패", state="error", expanded=True)
         st.error(str(e)); st.stop()
 
 # 0630 서연 수정 — XAI와 동일한 방식으로 검색 유사도를 계산
@@ -561,9 +579,9 @@ col_left, col_right = st.columns([5, 4], gap="medium")
 reasoning_html = (
     cls.reasoning
     .replace("\n", "<br>")
-    .replace("[후보 제외 이유]", "<b>❌ 후보 제외 이유</b>")
-    .replace("[후보 비교]", "<br><br><b>📚 후보 비교</b>")
-    .replace("[최종 판단]", "<br><br><b>✅ 최종 판단</b>")
+    .replace("[후보 제외 이유]", "<b>후보 제외 이유</b>")
+    .replace("[후보 비교]", "<br><br><b>후보 비교</b>")
+    .replace("[최종 판단]", "<br><br><b>최종 판단</b>")
 )
 
 with col_left:
@@ -601,17 +619,17 @@ if retrieval_log:
 
     # 0630 서연 추가 — 실제 인용된 검색 결과 / 인용되지 않은 후보를 구분해서 표시
     n_cited = len(cited_idx & {h["chunk_index"] for h in retrieval_log})
-    with st.expander(f"🔍 상세 청크 보기 — {n_cited}건 인용 / {len(retrieval_log)}건 검색"):
+    with st.expander(f"상세 청크 보기 — {n_cited}건 인용 / {len(retrieval_log)}건 검색"):
         st.markdown(render_chunk_cards(retrieval_log, cited_idx), unsafe_allow_html=True)
 
 
 # ─ 4단계: FTA 적용 판단 ───────────────────────────────────────────────────────
-with st.status("🤝 4단계: FTA 적용 가능성 판단 중...", expanded=False) as s4:
+with st.status("4단계: FTA 적용 가능성 판단 중...", expanded=False) as s4:
     try:
         fta = check_fta_eligibility(pi, cls)
-        s4.update(label=f"✅ 4단계 완료 — {'FTA 적용 가능' if fta.eligible else 'FTA 해당 없음'}", state="complete")
+        s4.update(label=f"4단계 완료 — {'FTA 적용 가능' if fta.eligible else 'FTA 해당 없음'}", state="complete")
     except Exception as e:
-        s4.update(label="❌ 4단계 실패", state="error", expanded=True)
+        s4.update(label="4단계 실패", state="error", expanded=True)
         st.error(str(e)); st.stop()
 
 fta_color = "#e8f8ee" if fta.eligible else "#fff4e5"
@@ -655,9 +673,9 @@ with st.status("📋 5단계: 면세 대상 여부 판단 + 필요 서류 검증
         exemption = _mock_exemption(pi) if test_mode else check_duty_exemption(pi)
         doc_check = verify_required_documents(pi, fta, exemption)
         lbl = "서류 완비" if doc_check.is_complete else f"누락 {len(doc_check.missing_documents)}건"
-        s5.update(label=f"✅ 5단계 완료 — {lbl}", state="complete")
+        s5.update(label=f"5단계 완료 — {lbl}", state="complete")
     except Exception as e:
-        s5.update(label="❌ 5단계 실패", state="error", expanded=True)
+        s5.update(label="5단계 실패", state="error", expanded=True)
         st.error(str(e)); st.stop()
 
 # 0626 유림 추가 — 면세 가능성 UI
@@ -668,7 +686,7 @@ if getattr(exemption, "is_likely_exempt", False):
     ex_html = f"""
 <div style="background:#e8f8ee;border-radius:12px;padding:14px 16px;margin-bottom:10px">
   <div style="font-size:14px;font-weight:700;color:#1a7f3c;margin-bottom:6px">
-    ✅ 면세 대상 가능성 있음{f" — {cat}" if cat else ""}
+    면세 대상 가능성 있음{f" — {cat}" if cat else ""}
   </div>
   <div style="font-size:13px;color:#1d1d1f">{exemption.reasoning}</div>
   {f'<div style="font-size:12px;color:#1a7f3c;margin-top:6px">근거: {basis}</div>' if basis else ""}
